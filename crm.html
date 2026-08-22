@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>CRM Clients</title>
+<style>
+  :root{
+    --bg:#f6f5f2;
+    --panel:#ffffff;
+    --ink:#1c2b3a;
+    --ink-soft:#5b6b7a;
+    --line:#e3e0d8;
+    --navy:#1e3a52;
+    --navy-deep:#132837;
+    --teal:#3d7a6e;
+    --amber:#c9862f;
+    --amber-bg:#fbeee0;
+    --green:#3d7a5a;
+    --green-bg:#e6f1ea;
+    --gray-bg:#eceae5;
+    --danger:#b04a3f;
+    --radius:10px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    padding:28px 20px 60px;
+  }
+  .wrap{max-width:1100px;margin:0 auto;}
+  header{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    margin-bottom:22px;flex-wrap:wrap;gap:14px;
+  }
+  h1{
+    font-size:22px;margin:0 0 4px;letter-spacing:.2px;color:var(--navy-deep);
+    font-weight:700;
+  }
+  .sub{color:var(--ink-soft);font-size:13px;margin:0;}
+  .actions-top{display:flex;gap:10px;flex-wrap:wrap;}
+  button{
+    font-family:inherit;cursor:pointer;border:none;border-radius:8px;
+    font-size:13.5px;font-weight:600;padding:9px 15px;transition:.15s;
+  }
+  button:focus-visible{outline:2px solid var(--navy);outline-offset:2px;}
+  .btn-primary{background:var(--navy);color:#fff;}
+  .btn-primary:hover{background:var(--navy-deep);}
+  .btn-ghost{background:var(--panel);color:var(--navy);border:1px solid var(--line);}
+  .btn-ghost:hover{background:#efece4;}
+  .btn-danger{background:transparent;color:var(--danger);}
+  .btn-danger:hover{background:#fbe9e6;}
+  .btn-sm{padding:5px 9px;font-size:12px;border-radius:6px;}
+
+  .toolbar{
+    display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;
+  }
+  .search{
+    flex:1;min-width:200px;padding:9px 12px;border-radius:8px;border:1px solid var(--line);
+    background:var(--panel);font-size:13.5px;color:var(--ink);
+  }
+  .tabs{display:flex;gap:6px;background:var(--panel);padding:4px;border-radius:9px;border:1px solid var(--line);}
+  .tab{padding:7px 13px;border-radius:6px;font-size:13px;font-weight:600;color:var(--ink-soft);background:transparent;}
+  .tab.active{background:var(--navy);color:#fff;}
+
+  .panel{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    overflow:hidden;
+  }
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  thead th{
+    text-align:left;padding:11px 14px;background:#f1efe9;color:var(--ink-soft);
+    font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;
+    border-bottom:1px solid var(--line);
+  }
+  tbody td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:#faf9f6;}
+  .name{font-weight:600;}
+  .muted{color:var(--ink-soft);font-size:12.5px;}
+  .badge{
+    display:inline-block;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;
+    letter-spacing:.2px;
+  }
+  .badge-relance{background:var(--amber-bg);color:var(--amber);}
+  .badge-ok{background:var(--green-bg);color:var(--green);}
+  .badge-neutre{background:var(--gray-bg);color:var(--ink-soft);}
+  .act-tag{
+    display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700;
+    letter-spacing:.3px;margin-bottom:4px;
+  }
+  .act-vitres{background:#e2edf5;color:var(--navy);}
+  .act-ramonage{background:#efe6dc;color:#7a4a25;}
+  .docs-list{display:flex;flex-direction:column;gap:4px;}
+  .doc-chip{
+    display:inline-flex;align-items:center;gap:5px;background:var(--gray-bg);
+    padding:3px 8px;border-radius:6px;font-size:11.5px;color:var(--ink);cursor:pointer;
+    width:fit-content;
+  }
+  .doc-chip:hover{background:#e2ded3;}
+  .row-actions{display:flex;gap:6px;flex-wrap:wrap;}
+  .empty{padding:50px 20px;text-align:center;color:var(--ink-soft);}
+  .empty b{color:var(--ink);}
+
+  .overlay{
+    position:fixed;inset:0;background:rgba(19,40,55,.45);display:flex;
+    align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;z-index:50;
+  }
+  .modal{
+    background:var(--panel);border-radius:var(--radius);max-width:560px;width:100%;
+    padding:26px 26px 22px;border:1px solid var(--line);
+  }
+  .modal h2{margin:0 0 18px;font-size:17px;color:var(--navy-deep);}
+  .field{margin-bottom:13px;}
+  .field label{display:block;font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:5px;}
+  .field input,.field select,.field textarea{
+    width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--line);
+    font-size:13.5px;font-family:inherit;color:var(--ink);background:#fdfcfa;
+  }
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .modal-actions{display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:10px;flex-wrap:wrap;}
+  .file-row{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-soft);margin-top:6px;}
+  .toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
+    background:var(--navy-deep);color:#fff;padding:10px 18px;border-radius:8px;
+    font-size:13px;z-index:99;opacity:0;pointer-events:none;transition:.2s;
+  }
+  .toast.show{opacity:1;}
+  .loading{padding:60px;text-align:center;color:var(--ink-soft);font-size:13.5px;}
+  @media(max-width:640px){
+    .grid2{grid-template-columns:1fr;}
+    table,thead,tbody,tr{display:block;}
+    thead{display:none;}
+    tbody tr{border-bottom:1px solid var(--line);padding:10px 0;}
+    tbody td{border:none;padding:4px 14px;display:flex;justify-content:space-between;gap:10px;}
+    tbody td::before{content:attr(data-label);font-weight:700;color:var(--ink-soft);font-size:11px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="loading">Chargement de la base client…</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const STATUTS = [
+  {v:"a_relancer", label:"À relancer", cls:"badge-relance"},
+  {v:"en_attente", label:"En attente", cls:"badge-neutre"},
+  {v:"cloture", label:"Clôturé", cls:"badge-ok"},
+];
+
+const ACTIVITES = [
+  {v:"vitres", label:"Vitres", cls:"act-vitres"},
+  {v:"ramonage", label:"Ramonage", cls:"act-ramonage"},
+];
+
+let clients = [];
+let filterTab = "tous";
+let filterActivite = "toutes";
+let searchTerm = "";
+let dateFrom = "";
+let dateTo = "";
+let editingId = null; // id of client being edited, or "new"
+
+const app = document.getElementById("app");
+const toastEl = document.getElementById("toast");
+
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  setTimeout(()=>toastEl.classList.remove("show"), 2200);
+}
+
+function uid(){
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+}
+
+function escCsv(v){
+  v = (v ?? "").toString().replace(/"/g,'""');
+  return `"${v}"`;
+}
+
+async function loadClients(){
+  try{
+    const res = await window.storage.get('clients-list', false);
+    clients = res && res.value ? JSON.parse(res.value) : [];
+  }catch(e){
+    clients = [];
+  }
+  render();
+}
+
+async function persist(){
+  try{
+    const res = await window.storage.set('clients-list', JSON.stringify(clients), false);
+    if(!res) toast("Échec de la sauvegarde, réessaie.");
+  }catch(e){
+    toast("Erreur de sauvegarde : " + e.message);
+  }
+}
+
+function statutMeta(v){
+  return STATUTS.find(s=>s.v===v) || STATUTS[1];
+}
+
+function activiteMeta(v){
+  return ACTIVITES.find(a=>a.v===v) || null;
+}
+
+function filteredClients(){
+  let list = clients;
+  if(filterTab === "relance") list = list.filter(c=>c.statut==="a_relancer");
+  if(filterActivite !== "toutes") list = list.filter(c=>c.activite===filterActivite);
+  if(dateFrom) list = list.filter(c=> c.dateIntervention && c.dateIntervention >= dateFrom);
+  if(dateTo) list = list.filter(c=> c.dateIntervention && c.dateIntervention <= dateTo);
+  if(searchTerm.trim()){
+    const t = searchTerm.toLowerCase();
+    list = list.filter(c =>
+      (c.nom+" "+c.prenom+" "+c.email+" "+c.typeIntervention).toLowerCase().includes(t)
+    );
+  }
+  return [...list].sort((a,b)=> (b.dateIntervention||"").localeCompare(a.dateIntervention||""));
+}
+
+function hasActiveFilters(){
+  return filterTab!=="tous" || filterActivite!=="toutes" || !!dateFrom || !!dateTo || !!searchTerm.trim();
+}
+
+function render(){
+  const list = filteredClients();
+  app.innerHTML = `
+    <header>
+      <div>
+        <h1>CRM Clients — Vitres &amp; Ramonage</h1>
+        <p class="sub">${clients.length} client${clients.length>1?"s":""} en base · sauvegarde automatique dans le cloud, accessible ordinateur et mobile</p>
+      </div>
+      <div class="actions-top">
+        <button class="btn-ghost" id="exportBtn">Exporter ${hasActiveFilters() ? `(${list.length} filtré${list.length>1?"s":""})` : "en CSV"}</button>
+        <button class="btn-primary" id="addBtn">+ Nouveau client</button>
+      </div>
+    </header>
+
+    <div class="toolbar">
+      <input class="search" id="searchInput" placeholder="Rechercher par nom, email, type d'intervention…" value="${searchTerm.replace(/"/g,'&quot;')}">
+      <div class="tabs">
+        <button class="tab ${filterActivite==='toutes'?'active':''}" data-actf="toutes">Toutes activités</button>
+        ${ACTIVITES.map(a=>`<button class="tab ${filterActivite===a.v?'active':''}" data-actf="${a.v}">${a.label}</button>`).join("")}
+      </div>
+      <div class="tabs">
+        <button class="tab ${filterTab==='tous'?'active':''}" data-tab="tous">Tous statuts</button>
+        <button class="tab ${filterTab==='relance'?'active':''}" data-tab="relance">À relancer</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="field" style="margin-bottom:0;">
+        <label style="margin-bottom:3px;">Intervention du</label>
+        <input type="date" id="dateFromInput" value="${dateFrom}">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label style="margin-bottom:3px;">au</label>
+        <input type="date" id="dateToInput" value="${dateTo}">
+      </div>
+      ${hasActiveFilters() ? `<button class="btn-ghost btn-sm" id="clearFiltersBtn" style="align-self:flex-end;">Effacer les filtres</button>` : ""}
+    </div>
+
+    <div class="panel">
+      ${list.length === 0 ? `
+        <div class="empty">
+          <p><b>Aucun client ici.</b></p>
+          <p>Ajoute ton premier client avec le bouton « Nouveau client ».</p>
+        </div>
+      ` : `
+        <table>
+          <thead>
+            <tr>
+              <th>Client</th><th>Contact</th><th>Activité</th><th>Intervention</th><th>Statut</th><th>Documents</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(c => `
+              <tr data-id="${c.id}">
+                <td data-label="Client">
+                  <div class="name">${c.prenom||""} ${c.nom||""}</div>
+                  <div class="muted">${c.adresse||""}</div>
+                </td>
+                <td data-label="Contact">${c.email||"<span class='muted'>—</span>"}</td>
+                <td data-label="Activité">${activiteMeta(c.activite) ? `<span class="act-tag ${activiteMeta(c.activite).cls}">${activiteMeta(c.activite).label}</span>` : "<span class='muted'>—</span>"}</td>
+                <td data-label="Intervention">
+                  <div>${c.typeIntervention||"<span class='muted'>—</span>"}</div>
+                  <div class="muted">${c.dateIntervention||""}</div>
+                </td>
+                <td data-label="Statut"><span class="badge ${statutMeta(c.statut).cls}">${statutMeta(c.statut).label}</span></td>
+                <td data-label="Documents">
+                  <div class="docs-list">
+                    ${(c.docs||[]).length===0 ? `<span class="muted">Aucun</span>` :
+                      c.docs.map(d=>`<span class="doc-chip" data-doc="${c.id}|${d.id}">📄 ${d.name}</span>`).join("")}
+                  </div>
+                </td>
+                <td data-label="">
+                  <div class="row-actions">
+                    <button class="btn-ghost btn-sm" data-edit="${c.id}">Modifier</button>
+                    <button class="btn-danger btn-sm" data-del="${c.id}">Supprimer</button>
+                  </div>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `}
+    </div>
+  `;
+
+  document.getElementById("addBtn").onclick = ()=>openModal("new");
+  document.getElementById("exportBtn").onclick = exportCsv;
+  document.getElementById("searchInput").oninput = (e)=>{ searchTerm = e.target.value; render(); document.getElementById("searchInput").focus(); document.getElementById("searchInput").setSelectionRange(searchTerm.length,searchTerm.length); };
+  document.querySelectorAll("[data-tab]").forEach(t=> t.onclick = ()=>{ filterTab = t.dataset.tab; render(); });
+  document.querySelectorAll("[data-actf]").forEach(t=> t.onclick = ()=>{ filterActivite = t.dataset.actf; render(); });
+  document.getElementById("dateFromInput").onchange = (e)=>{ dateFrom = e.target.value; render(); };
+  document.getElementById("dateToInput").onchange = (e)=>{ dateTo = e.target.value; render(); };
+  const clearBtn = document.getElementById("clearFiltersBtn");
+  if(clearBtn) clearBtn.onclick = ()=>{ filterTab="tous"; filterActivite="toutes"; searchTerm=""; dateFrom=""; dateTo=""; render(); };
+  document.querySelectorAll("[data-edit]").forEach(b=> b.onclick = ()=> openModal(b.dataset.edit));
+  document.querySelectorAll("[data-del]").forEach(b=> b.onclick = ()=> deleteClient(b.dataset.del));
+  document.querySelectorAll("[data-doc]").forEach(el=> el.onclick = ()=>{
+    const [cid, did] = el.dataset.doc.split("|");
+    openDoc(cid, did);
+  });
+}
+
+function exportCsv(){
+  const headers = ["Nom","Prenom","Email","Adresse","Activite","Date intervention","Type intervention","Statut","Notes"];
+  const list = filteredClients();
+  const rows = list.map(c => [
+    c.nom, c.prenom, c.email, c.adresse, activiteMeta(c.activite) ? activiteMeta(c.activite).label : "",
+    c.dateIntervention, c.typeIntervention, statutMeta(c.statut).label, c.notes
+  ]);
+  const csv = [headers.map(escCsv).join(","), ...rows.map(r=>r.map(escCsv).join(","))].join("\r\n");
+  const blob = new Blob(["\uFEFF"+csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `clients_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`Export CSV téléchargé (${list.length} client${list.length>1?"s":""}).`);
+}
+
+function openModal(id){
+  editingId = id;
+  const c = id==="new" ? {nom:"",prenom:"",email:"",adresse:"",activite:"vitres",dateIntervention:"",typeIntervention:"",statut:"en_attente",notes:"",docs:[]} : clients.find(x=>x.id===id);
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+  overlay.id = "overlay";
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>${id==="new" ? "Nouveau client" : "Modifier le client"}</h2>
+      <div class="grid2">
+        <div class="field"><label>Prénom</label><input id="f_prenom" value="${(c.prenom||"").replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>Nom</label><input id="f_nom" value="${(c.nom||"").replace(/"/g,'&quot;')}"></div>
+      </div>
+      <div class="field"><label>Email</label><input id="f_email" type="email" value="${(c.email||"").replace(/"/g,'&quot;')}"></div>
+      <div class="field"><label>Adresse</label><input id="f_adresse" value="${(c.adresse||"").replace(/"/g,'&quot;')}"></div>
+      <div class="grid2">
+        <div class="field">
+          <label>Activité</label>
+          <select id="f_activite">
+            ${ACTIVITES.map(a=>`<option value="${a.v}" ${c.activite===a.v?"selected":""}>${a.label}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field"><label>Date d'intervention</label><input id="f_date" type="date" value="${c.dateIntervention||""}"></div>
+      </div>
+      <div class="field"><label>Type d'intervention</label><input id="f_type" placeholder="Ex. : nettoyage vitrine, ramonage annuel…" value="${(c.typeIntervention||"").replace(/"/g,'&quot;')}"></div>
+      <div class="field">
+        <label>Statut</label>
+        <select id="f_statut">
+          ${STATUTS.map(s=>`<option value="${s.v}" ${c.statut===s.v?"selected":""}>${s.label}</option>`).join("")}
+        </select>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="f_notes" rows="2">${c.notes||""}</textarea></div>
+      <div class="field">
+        <label>Ajouter un document (devis / facture, PDF)</label>
+        <input type="file" id="f_file" accept="application/pdf">
+        <div class="file-row" id="fileHint">Max ~3 Mo par fichier (stockage dans le cloud de l'app).</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-ghost" id="cancelBtn">Annuler</button>
+        <button class="btn-primary" id="saveBtn">Enregistrer</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById("cancelBtn").onclick = ()=> overlay.remove();
+  overlay.onclick = (e)=>{ if(e.target===overlay) overlay.remove(); };
+  document.getElementById("saveBtn").onclick = ()=> saveClient(c);
+}
+
+async function saveClient(original){
+  const nom = document.getElementById("f_nom").value.trim();
+  const prenom = document.getElementById("f_prenom").value.trim();
+  if(!nom && !prenom){ toast("Indique au moins un nom ou prénom."); return; }
+
+  const data = {
+    id: editingId==="new" ? uid() : editingId,
+    nom, prenom,
+    email: document.getElementById("f_email").value.trim(),
+    adresse: document.getElementById("f_adresse").value.trim(),
+    activite: document.getElementById("f_activite").value,
+    dateIntervention: document.getElementById("f_date").value,
+    typeIntervention: document.getElementById("f_type").value.trim(),
+    statut: document.getElementById("f_statut").value,
+    notes: document.getElementById("f_notes").value.trim(),
+    docs: original.docs || [],
+  };
+
+  const fileInput = document.getElementById("f_file");
+  const file = fileInput.files[0];
+
+  if(file){
+    if(file.size > 3.6 * 1024 * 1024){
+      toast("Fichier trop volumineux (max ~3,6 Mo). Enregistrement sans ce document.");
+    } else {
+      const dataUrl = await new Promise((res,rej)=>{
+        const r = new FileReader();
+        r.onload = ()=>res(r.result);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      const docId = uid();
+      try{
+        const stored = await window.storage.set(`doc-${data.id}-${docId}`, dataUrl, false);
+        if(stored){
+          data.docs = [...data.docs, {id: docId, name: file.name}];
+        } else {
+          toast("Le document n'a pas pu être sauvegardé.");
+        }
+      }catch(e){
+        toast("Erreur en sauvegardant le document.");
+      }
+    }
+  }
+
+  if(editingId==="new"){
+    clients.push(data);
+  } else {
+    clients = clients.map(c=> c.id===data.id ? data : c);
+  }
+  document.getElementById("overlay").remove();
+  await persist();
+  render();
+  toast("Client enregistré.");
+}
+
+async function deleteClient(id){
+  const c = clients.find(x=>x.id===id);
+  if(!c) return;
+  if(!confirm(`Supprimer ${c.prenom} ${c.nom} ainsi que ses documents ?`)) return;
+  for(const d of (c.docs||[])){
+    try{ await window.storage.delete(`doc-${id}-${d.id}`, false); }catch(e){}
+  }
+  clients = clients.filter(x=>x.id!==id);
+  await persist();
+  render();
+  toast("Client supprimé.");
+}
+
+async function openDoc(clientId, docId){
+  try{
+    const res = await window.storage.get(`doc-${clientId}-${docId}`, false);
+    if(!res || !res.value){ toast("Document introuvable."); return; }
+    const w = window.open();
+    w.document.write(`<iframe src="${res.value}" style="border:none;width:100%;height:100vh;"></iframe>`);
+  }catch(e){
+    toast("Impossible d'ouvrir le document.");
+  }
+}
+
+loadClients();
+</script>
+</body>
+</html>
