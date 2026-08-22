@@ -340,7 +340,26 @@ td{
 
 <div class="toast" id="toast"></div>
 
+<!-- Client Supabase (chargé depuis un CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
+
+/* =========================
+   CONFIGURATION SUPABASE
+   -> à remplir avant de commit
+========================= */
+
+const SUPABASE_URL = "https://TON-PROJET.supabase.co";
+const SUPABASE_ANON_KEY = "TA_CLE_ANON_PUBLIQUE";
+const TABLE_CLIENTS = "clients";
+const BUCKET_DOCS = "documents-clients";
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
 
 const STATUTS=[
   {v:"a_relancer",label:"À relancer",cls:"relance"},
@@ -385,63 +404,74 @@ function activite(v){
 
 
 /* =========================
-   CHARGEMENT CLOUD
+   MAPPING SUPABASE <-> APP
+   (la table utilise le snake_case,
+   l'app utilise le camelCase)
+========================= */
+
+function rowToClient(row){
+  return {
+    id:row.id,
+    nom:row.nom||"",
+    prenom:row.prenom||"",
+    email:row.email||"",
+    telephone:row.telephone||"",
+    adresse:row.adresse||"",
+    activite:row.activite||"vitres",
+    dateIntervention:row.date_intervention||"",
+    typeIntervention:row.type_intervention||"",
+    statut:row.statut||"en_attente",
+    notes:row.notes||"",
+    docs:row.docs||[]
+  };
+}
+
+function clientToRow(client){
+  return {
+    id:client.id,
+    nom:client.nom,
+    prenom:client.prenom,
+    email:client.email,
+    telephone:client.telephone,
+    adresse:client.adresse,
+    activite:client.activite,
+    date_intervention:client.dateIntervention || null,
+    type_intervention:client.typeIntervention,
+    statut:client.statut,
+    notes:client.notes,
+    docs:client.docs||[]
+  };
+}
+
+
+/* =========================
+   CHARGEMENT DEPUIS SUPABASE
 ========================= */
 
 async function loadClients(){
 
   try{
 
-    if(!window.storage){
-      clients=[];
-      render();
-      toast("Stockage cloud indisponible");
-      return;
+    const {data,error}=await supabaseClient
+      .from(TABLE_CLIENTS)
+      .select("*")
+      .order("date_intervention",{ascending:false});
+
+    if(error){
+      throw error;
     }
 
-    const result=await window.storage.get("clients-list",false);
-
-    if(result && result.value){
-      clients=JSON.parse(result.value);
-    }else{
-      clients=[];
-    }
+    clients=(data||[]).map(rowToClient);
 
   }catch(error){
 
     console.error(error);
     clients=[];
+    toast("Erreur de chargement Supabase");
 
   }
 
   render();
-}
-
-
-/* =========================
-   SAUVEGARDE CLOUD
-========================= */
-
-async function persist(){
-
-  try{
-
-    const result=await window.storage.set(
-      "clients-list",
-      JSON.stringify(clients),
-      false
-    );
-
-    if(!result){
-      toast("Erreur de sauvegarde");
-    }
-
-  }catch(error){
-
-    console.error(error);
-    toast("Erreur de sauvegarde");
-
-  }
 }
 
 
@@ -509,7 +539,7 @@ function render(){
         <p class="sub">
           ${clients.length}
           client${clients.length>1?"s":""}
-          en base · sauvegarde automatique dans le cloud
+          en base · sauvegarde automatique dans Supabase
         </p>
       </div>
 
@@ -1117,7 +1147,7 @@ function openModal(id){
 
 
 /* =========================
-   ENREGISTREMENT CLIENT
+   ENREGISTREMENT CLIENT (SUPABASE)
 ========================= */
 
 async function saveClient(original){
@@ -1183,37 +1213,27 @@ async function saveClient(original){
 
     try{
 
-      const dataUrl=await new Promise((resolve,reject)=>{
-
-        const reader=new FileReader();
-
-        reader.onload=()=>resolve(reader.result);
-
-        reader.onerror=reject;
-
-        reader.readAsDataURL(file);
-
-      });
-
-
       const docId=uid();
 
+      const path=`${id}/${docId}-${file.name}`;
 
-      const saved=await window.storage.set(
-        `doc-${id}-${docId}`,
-        dataUrl,
-        false
-      );
-
-
-      if(saved){
-
-        client.docs.push({
-          id:docId,
-          name:file.name
+      const {error:uploadError}=await supabaseClient
+        .storage
+        .from(BUCKET_DOCS)
+        .upload(path,file,{
+          contentType:"application/pdf",
+          upsert:false
         });
 
+      if(uploadError){
+        throw uploadError;
       }
+
+      client.docs.push({
+        id:docId,
+        name:file.name,
+        path:path
+      });
 
     }catch(error){
 
@@ -1221,7 +1241,30 @@ async function saveClient(original){
 
       toast("Erreur lors de l'enregistrement du PDF.");
 
+      return;
+
     }
+
+  }
+
+
+  try{
+
+    const {error:saveError}=await supabaseClient
+      .from(TABLE_CLIENTS)
+      .upsert(clientToRow(client));
+
+    if(saveError){
+      throw saveError;
+    }
+
+  }catch(error){
+
+    console.error(error);
+
+    toast("Erreur de sauvegarde Supabase.");
+
+    return;
 
   }
 
@@ -1242,9 +1285,6 @@ async function saveClient(original){
   document.getElementById("overlay").remove();
 
 
-  await persist();
-
-
   render();
 
 
@@ -1254,7 +1294,7 @@ async function saveClient(original){
 
 
 /* =========================
-   SUPPRESSION
+   SUPPRESSION (SUPABASE)
 ========================= */
 
 async function deleteClient(id){
@@ -1276,24 +1316,49 @@ async function deleteClient(id){
   }
 
 
-  for(const doc of (client.docs||[])){
+  const paths=(client.docs||[]).map(d=>d.path).filter(Boolean);
+
+  if(paths.length>0){
 
     try{
 
-      await window.storage.delete(
-        `doc-${id}-${doc.id}`,
-        false
-      );
+      await supabaseClient
+        .storage
+        .from(BUCKET_DOCS)
+        .remove(paths);
 
-    }catch(error){}
+    }catch(error){
+
+      console.error(error);
+
+    }
+
+  }
+
+
+  try{
+
+    const {error}=await supabaseClient
+      .from(TABLE_CLIENTS)
+      .delete()
+      .eq("id",id);
+
+    if(error){
+      throw error;
+    }
+
+  }catch(error){
+
+    console.error(error);
+
+    toast("Erreur lors de la suppression.");
+
+    return;
 
   }
 
 
   clients=clients.filter(c=>c.id!==id);
-
-
-  await persist();
 
 
   render();
@@ -1305,29 +1370,35 @@ async function deleteClient(id){
 
 
 /* =========================
-   OUVRIR DOCUMENT
+   OUVRIR DOCUMENT (SUPABASE STORAGE)
 ========================= */
 
 async function openDoc(clientId,docId){
 
+  const client=clients.find(c=>c.id===clientId);
+
+  const doc=client && (client.docs||[]).find(d=>d.id===docId);
+
+  if(!doc || !doc.path){
+
+    toast("Document introuvable.");
+
+    return;
+
+  }
+
+  const win=window.open();
+
   try{
 
-    const result=await window.storage.get(
-      `doc-${clientId}-${docId}`,
-      false
-    );
+    const {data,error}=await supabaseClient
+      .storage
+      .from(BUCKET_DOCS)
+      .createSignedUrl(doc.path,60);
 
-
-    if(!result || !result.value){
-
-      toast("Document introuvable.");
-
-      return;
-
+    if(error || !data || !data.signedUrl){
+      throw error||new Error("URL manquante");
     }
-
-
-    const win=window.open();
 
     if(!win){
 
@@ -1337,23 +1408,15 @@ async function openDoc(clientId,docId){
 
     }
 
-
-    win.document.write(`
-      <html>
-      <body style="margin:0">
-        <iframe
-          src="${result.value}"
-          style="border:0;width:100%;height:100vh">
-        </iframe>
-      </body>
-      </html>
-    `);
-
-    win.document.close();
+    win.location=data.signedUrl;
 
   }catch(error){
 
     console.error(error);
+
+    if(win){
+      win.close();
+    }
 
     toast("Impossible d'ouvrir le document.");
 
