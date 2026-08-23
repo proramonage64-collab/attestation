@@ -513,6 +513,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   .col-desc{width:26%;} .col-pu{width:11%;} .col-qte{width:8%;} .col-tva{width:12%;} .col-ht{width:13%;} .col-tvamt{width:12%;} .col-ttc{width:13%;} .col-del{width:20px;}
   .del-btn{ background:none; border:none; color:#B4453F; cursor:pointer; font-size:15px; padding:2px 4px; }
   .add-row-btn{ margin-top:10px; background:var(--green-soft); color:var(--green); border:1px dashed var(--green); border-radius:7px; padding:8px 12px; font-size:12.5px; font-weight:600; cursor:pointer; }
+  .dictate-btn{ margin-top:10px; margin-right:8px; background:var(--red-soft); color:var(--red); border:1px dashed var(--red); border-radius:7px; padding:8px 12px; font-size:12.5px; font-weight:600; cursor:pointer; }
+  .dictate-btn.dictating{ background:var(--red); color:#fff; border-style:solid; animation:pulse-mic 1.2s infinite; }
+  @keyframes pulse-mic{ 0%,100%{opacity:1;} 50%{opacity:.6;} }
 
   .totals{ margin-top:12px; display:flex; justify-content:flex-end; }
   .totals table{ font-size:13px; }
@@ -597,6 +600,13 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
   <!-- ===================== PANEL: INFOS ===================== -->
   <div class="panel active" id="panel-infos">
+
+    <div class="card" style="border-color:var(--red);">
+      <h2>🎙️ Dictée globale (bêta)</h2>
+      <div class="card-note">Appuyez, dites par exemple : <em>"client Dupont, adresse 5 rue de la Paix à Bayonne, poêle à bois marque Godin, ramonage effectué"</em>. Les champs reconnus se remplissent seuls ; tout ce que vous dites est aussi gardé dans les notes techniciennes par sécurité.</div>
+      <button class="dictate-btn" id="global-dictate-btn" style="margin-right:0;">🎙️ Dicter tout</button>
+      <div class="hint" id="global-dictate-hint" style="margin-top:8px;">Reconnaît : client, adresse, téléphone, marque, type d'appareil (poêle/insert/chaudière...), combustible (bois/granulés/gaz/fioul). Ce n'est pas une IA conversationnelle — juste des mots-clés reconnus, donc mieux vaut parler simplement et dans cet ordre.</div>
+    </div>
 
     <div class="card">
       <h2>Entreprise</h2>
@@ -738,7 +748,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       <div class="section-divider"></div>
       <h2 style="font-size:14px;">Photos à l'appui</h2>
       <div class="card-note">Photos des non-conformités (ou de l'installation en général) — <strong>intégrées automatiquement en pages finales</strong> lors de la génération du PDF de l'attestation.</div>
-      <input type="file" id="att-photos" accept="image/*" multiple capture="environment">
+      <input type="file" id="att-photos" accept="image/*" multiple>
       <div id="att-photos-preview" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;"></div>
     </div>
 
@@ -752,6 +762,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     <div class="card">
       <h2>Notes et commentaires du technicien</h2>
       <textarea id="att-notes" placeholder="Observations libres, recommandations particulières..."></textarea>
+      <button class="dictate-btn" id="att-dictate-btn">🎙️ Dicter</button>
+      <button class="add-row-btn" id="att-generate-conclusion" style="margin-top:10px;">Générer une conclusion</button>
+      <div class="hint" id="att-dictate-hint">Appuyez, parlez, le texte s'ajoute automatiquement. Fonctionne sur Chrome (Android). Non disponible sur Safari iPhone.</div>
     </div>
 
     <div class="card">
@@ -1420,6 +1433,203 @@ $('btn-reset').addEventListener('click', ()=>{
   initAttNC();
   initChecklists();
   toast('Formulaire réinitialisé');
+});
+
+/* ===================== DICTÉE GLOBALE (mots-clés) ===================== */
+function setSelectByText(id, text){
+  const sel = $(id);
+  for(const opt of sel.options){
+    if(opt.textContent.trim().toLowerCase() === text.toLowerCase()){ sel.value = opt.value; return true; }
+  }
+  return false;
+}
+
+function parseGlobalDictation(text){
+  if(!text.trim()) return;
+
+  let m = text.match(/client[e]?\s*(?:s'appelle|:)?\s+([^,.]+?)(?=,|\.|adresse|t[ée]l[ée]phone|marque|combustible|type|po[êe]le|insert|chaudi[èe]re|cuisini[èe]re|$)/i);
+  if(m && m[1].trim()) $('cli-nom').value = m[1].trim();
+
+  m = text.match(/adresse\s*(?::)?\s+([^,.]+?)(?=,|\.|t[ée]l[ée]phone|client|marque|combustible|type|po[êe]le|insert|chaudi[èe]re|cuisini[èe]re|$)/i);
+  if(m && m[1].trim()) $('cli-adresse').value = m[1].trim();
+
+  m = text.match(/t[ée]l[ée]phone\s*(?::)?\s+([^,.]+?)(?=,|\.|adresse|client|marque|$)/i);
+  if(m && m[1].trim()) $('cli-tel').value = m[1].trim();
+
+  m = text.match(/marque\s*(?::)?\s+([^,.]+?)(?=,|\.|adresse|client|combustible|type|$)/i);
+  if(m && m[1].trim()) $('app-marque').value = m[1].trim();
+
+  const lower = text.toLowerCase();
+  const typeMap = [['foyer ouvert','Foyer ouvert'],['cuisinière','Cuisinière'],['cuisiniere','Cuisinière'],['insert','Insert'],
+    ['chaudière bois','Chaudière bois'],['chaudiere bois','Chaudière bois'],
+    ['chaudière granulés','Chaudière granulés'],['chaudiere granules','Chaudière granulés'],
+    ['chaudière gaz','Chaudière gaz'],['chaudiere gaz','Chaudière gaz'],
+    ['chaudière fioul','Chaudière fioul'],['chaudiere fioul','Chaudière fioul'],
+    ['poêle','Poêle'],['poele','Poêle']];
+  for(const [kw,val] of typeMap){ if(lower.includes(kw)){ setSelectByText('app-type', val); break; } }
+
+  const combMap = [['granulés','Granulés'],['granules','Granulés'],['granulé','Granulés'],['mixte','Mixte'],
+    ['bûches','Bûches'],['buches','Bûches'],['bois','Bûches'],['gaz','Gaz'],['fioul','Fioul']];
+  for(const [kw,val] of combMap){ if(lower.includes(kw)){ setSelectByText('app-combustible', val); break; } }
+
+  const ta = $('att-notes');
+  const marker = '[Dictée globale] ';
+  if(!ta.value.includes(text.trim())){
+    ta.value = ta.value.trim() ? ta.value.trim() + '\n\n' + marker + text.trim() : marker + text.trim();
+  }
+}
+
+const SpeechRecGlobal = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognitionGlobal = null;
+let isDictatingGlobal = false;
+let globalTranscript = '';
+
+if(SpeechRecGlobal){
+  recognitionGlobal = new SpeechRecGlobal();
+  recognitionGlobal.lang = 'fr-FR';
+  recognitionGlobal.continuous = true;
+  recognitionGlobal.interimResults = false;
+
+  recognitionGlobal.onresult = (e)=>{
+    let finalText = '';
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      if(e.results[i].isFinal) finalText += e.results[i][0].transcript;
+    }
+    if(finalText.trim()){
+      globalTranscript = (globalTranscript ? globalTranscript + ' ' : '') + finalText.trim();
+      parseGlobalDictation(globalTranscript);
+    }
+  };
+  recognitionGlobal.onerror = (e)=>{
+    if(e.error !== 'no-speech'){ stopGlobalDictation(); toast('Erreur micro : ' + e.error); }
+  };
+  recognitionGlobal.onend = ()=>{
+    if(isDictatingGlobal){ try{ recognitionGlobal.start(); }catch(e){} }
+  };
+} else {
+  $('global-dictate-hint').textContent = 'Dictée non disponible sur ce navigateur — utilisez Chrome sur Android.';
+}
+
+function stopGlobalDictation(){
+  isDictatingGlobal = false;
+  if(recognitionGlobal){ try{ recognitionGlobal.stop(); }catch(e){} }
+  $('global-dictate-btn').textContent = '🎙️ Dicter tout';
+  $('global-dictate-btn').classList.remove('dictating');
+}
+
+$('global-dictate-btn').addEventListener('click', ()=>{
+  if(!SpeechRecGlobal){ toast('Dictée non supportée sur ce navigateur'); return; }
+  if(isDictatingGlobal){
+    stopGlobalDictation();
+  } else {
+    isDictatingGlobal = true;
+    globalTranscript = '';
+    try{
+      recognitionGlobal.start();
+      $('global-dictate-btn').textContent = '⏹ Arrêter la dictée';
+      $('global-dictate-btn').classList.add('dictating');
+      toast('Dictée en cours — parlez');
+    }catch(e){
+      isDictatingGlobal = false;
+      toast('Impossible de démarrer le micro');
+    }
+  }
+});
+
+/* ===================== DICTÉE VOCALE ===================== */
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isDictating = false;
+
+if(SpeechRec){
+  recognition = new SpeechRec();
+  recognition.lang = 'fr-FR';
+  recognition.continuous = true;
+  recognition.interimResults = false;
+
+  recognition.onresult = (e)=>{
+    let finalText = '';
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      if(e.results[i].isFinal) finalText += e.results[i][0].transcript;
+    }
+    if(finalText.trim()){
+      const ta = $('att-notes');
+      ta.value = ta.value.trim() ? ta.value.trim() + ' ' + finalText.trim() : finalText.trim();
+    }
+  };
+  recognition.onerror = (e)=>{
+    if(e.error !== 'no-speech'){ stopDictation(); toast('Erreur micro : ' + e.error); }
+  };
+  recognition.onend = ()=>{
+    if(isDictating){ try{ recognition.start(); }catch(e){} } // relance auto si coupée par silence
+  };
+} else {
+  $('att-dictate-hint').textContent = 'Dictée non disponible sur ce navigateur — utilisez Chrome sur Android.';
+}
+
+function stopDictation(){
+  isDictating = false;
+  if(recognition){ try{ recognition.stop(); }catch(e){} }
+  $('att-dictate-btn').textContent = '🎙️ Dicter';
+  $('att-dictate-btn').classList.remove('dictating');
+}
+
+$('att-dictate-btn').addEventListener('click', ()=>{
+  if(!SpeechRec){ toast('Dictée non supportée sur ce navigateur'); return; }
+  if(isDictating){
+    stopDictation();
+  } else {
+    isDictating = true;
+    try{
+      recognition.start();
+      $('att-dictate-btn').textContent = '⏹ Arrêter la dictée';
+      $('att-dictate-btn').classList.add('dictating');
+      toast('Dictée en cours — parlez');
+    }catch(e){
+      isDictating = false;
+      toast('Impossible de démarrer le micro');
+    }
+  }
+});
+
+/* ===================== CONCLUSION AUTO ===================== */
+$('att-generate-conclusion').addEventListener('click', ()=>{
+  const app = getAppareil();
+  const nonEffectues = [];
+  document.querySelectorAll('.checklist-item').forEach(item=>{
+    const txt = item.querySelector('input[type=text]').value;
+    const checked = item.querySelector('input[type=radio]:checked');
+    if(txt && checked && checked.value === 'non-effectue') nonEffectues.push(txt);
+  });
+  const nonConformes = [];
+  ncItems.forEach((item,i)=>{
+    const el = document.querySelector(`input[name="att-nc-${i}"]:checked`);
+    if(el && el.value === 'non') nonConformes.push(item);
+  });
+
+  let text = `Intervention réalisée sur ${app.type.toLowerCase()} (${app.combustible.toLowerCase()}).\n\n`;
+
+  if(nonEffectues.length === 0){
+    text += `L'ensemble des points de contrôle prévus a été effectué.\n`;
+  } else {
+    text += `Points de contrôle non effectués ou sans objet à signaler :\n`;
+    nonEffectues.forEach(t=> text += `- ${t}\n`);
+  }
+
+  text += `\n`;
+  if(nonConformes.length === 0){
+    text += `Aucune non-conformité apparente n'a été constatée. L'installation est conforme à l'usage de l'appareil.\n`;
+  } else {
+    text += `Non-conformités constatées :\n`;
+    nonConformes.forEach(t=> text += `- ${t}\n`);
+    text += `Il est recommandé de faire intervenir un professionnel pour y remédier.\n`;
+  }
+
+  text += `\nConduits ramonés / entretenus sur toute leur longueur, vacuité vérifiée.`;
+
+  const existing = $('att-notes').value.trim();
+  $('att-notes').value = existing ? existing + '\n\n' + text : text;
+  toast('Conclusion générée');
 });
 
 /* ===================== INIT ===================== */
