@@ -614,7 +614,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         <div class="field" style="grid-column:1/-1;"><label>Adresse</label><input type="text" id="ent-adresse" value="15 Rue Séverin Lattapy, 64340 Boucau"></div>
         <div class="field"><label>SIRET</label><input type="text" id="ent-siret" value="953 259 090 00033"></div>
         <div class="field"><label>Email d'envoi (pour vos dossiers)</label><input type="email" id="ent-email" placeholder="contact@proramonage64.fr"></div>
-        <div class="field" style="grid-column:1/-1;"><label>IBAN (si règlement par virement)</label><input type="text" id="ent-iban" placeholder="FR76 ...."></div>
+        <div class="field" style="grid-column:1/-1;"><label>IBAN (si règlement par virement)</label><input type="text" id="ent-iban" placeholder="FR76 ...." value="FR76 1090 7000 1566 3192 2016 715"></div>
+        <div class="field"><label>BIC</label><input type="text" id="ent-bic" placeholder="CCBPFRPPBDX" value="CCBPFRPPBDX"></div>
       </div>
     </div>
 
@@ -1105,7 +1106,7 @@ function getEntreprise(){
   return {
     nom: $('ent-nom').value, adresse: $('ent-adresse').value,
     tel: $('ent-tel').value, siret: $('ent-siret').value,
-    email: $('ent-email').value, iban: $('ent-iban').value,
+    email: $('ent-email').value, iban: $('ent-iban').value, bic: $('ent-bic').value,
   };
 }
 function getClient(){
@@ -1236,8 +1237,21 @@ function buildFacturePDF(){
   doc.text('Total TTC : ' + $('fac-total-ttc').textContent, 140, yy+12);
   doc.setTextColor(22,21,20); doc.setFont('helvetica','normal'); doc.setFontSize(9);
 
-  yy += 16;
-  if(yy > 250) { doc.addPage(); yy = 20; }
+  yy += 10;
+  if(yy > 245) { doc.addPage(); yy = 20; }
+  if(ent.iban){
+    doc.setDrawColor(220,211,194); doc.line(margin, yy, 196, yy);
+    yy += 6;
+    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(140,15,19);
+    doc.text('Coordonnées bancaires (règlement par virement)', margin, yy);
+    doc.setTextColor(22,21,20); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    yy += 6;
+    doc.text('IBAN : ' + ent.iban, margin, yy);
+    yy += 5;
+    if(ent.bic){ doc.text('BIC : ' + ent.bic, margin, yy); yy += 5; }
+    yy += 3;
+  }
+  if(yy > 260) { doc.addPage(); yy = 20; }
   doc.setFontSize(9);
   doc.text('Reçu le règlement par : ' + $('fac-mode-reglement').value + '   en date du ' + fmtDateFR($('fac-date-reglement').value), margin, yy);
   yy += 16;
